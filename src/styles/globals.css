@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — the single source of truth for color.
+ * Components must consume tokens (via Tailwind theme mapping), never raw hex.
+ *
+ * Semantics:
+ *   safety    — blue, safety infrastructure indicators
+ *   emergency — red, reserved for emergency / critical only
+ *   hazard    — amber, hazards and warnings
+ *   verified  — green, verified-safe status
+ */
+:root {
+  --surface: 248 250 252;
+  --surface-raised: 255 255 255;
+  --surface-overlay: 255 255 255;
+  --ink: 15 23 42;
+  --ink-muted: 71 85 105;
+  --ink-faint: 148 163 184;
+  --line: 226 232 240;
+  --safety: 37 99 235;
+  --safety-strong: 29 78 216;
+  --emergency: 220 38 38;
+  --hazard: 217 119 6;
+  --verified: 22 163 74;
+
+  /* Marker category colors (consumed by the marker renderer). */
+  --marker-police: 37 99 235;
+  --marker-fire: 234 88 12;
+  --marker-medical: 220 38 38;
+  --marker-court: 124 58 137;
+  --marker-government: 100 116 139;
+  --marker-safe: 22 163 74;
+}
+
+.dark {
+  --surface: 11 17 27;
+  --surface-raised: 20 28 42;
+  --surface-overlay: 26 35 51;
+  --ink: 241 245 249;
+  --ink-muted: 148 163 184;
+  --ink-faint: 100 116 139;
+  --line: 42 53 71;
+  --safety: 96 165 250;
+  --safety-strong: 59 130 246;
+  --emergency: 248 113 113;
+  --hazard: 251 191 36;
+  --verified: 74 222 128;
+
+  --marker-police: 96 165 250;
+  --marker-fire: 251 146 60;
+  --marker-medical: 248 113 113;
+  --marker-court: 196 145 220;
+  --marker-government: 148 163 184;
+  --marker-safe: 74 222 128;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  @apply bg-surface text-ink;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* MapLibre chrome adjustments so vendor UI matches the design system. */
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+  opacity: 0.75;
+}
+.maplibregl-popup-content {
+  border-radius: 12px;
+}
+
+/* Reduced motion: kill nonessential animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.gps-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: rgb(var(--safety) / 0.35);
+  animation: pulse-ring 2.4s ease-out infinite;
+}

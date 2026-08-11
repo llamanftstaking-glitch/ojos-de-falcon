@@ -1,0 +1,25 @@
+services:
+  ojos-de-falcon:
+    build: .
+    image: ojos-de-falcon:latest
+    container_name: ojos-de-falcon
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3100}:3100"
+    environment:
+      # Self-host your own OSRM for production routing (public demo server is rate-limited):
+      # OSRM_URL: http://osrm:5000
+      # Optional vector map styles from your chosen provider:
+      # NEXT_PUBLIC_MAP_STYLE_DARK: https://…
+      # NEXT_PUBLIC_MAP_STYLE_LIGHT: https://…
+      OJOS_DATA_DIR: /data
+    volumes:
+      - ojos-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  ojos-data:
