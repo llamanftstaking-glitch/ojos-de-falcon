@@ -77,17 +77,37 @@ function elementToRecord(el, category) {
   }
 }
 
+// Overpass returns 406 without a descriptive User-Agent, and the public
+// instances shed load with 429/504 — retry across mirrors with backoff.
+const OVERPASS_MIRRORS = [OVERPASS_URL, 'https://overpass.kumi.systems/api/interpreter']
+const USER_AGENT = 'ojos-de-falcon/1.0 (safety infrastructure import; gizertech@gmail.com)'
+
+async function fetchOverpass(query) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const url = OVERPASS_MIRRORS[attempt % OVERPASS_MIRRORS.length]
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: 'data=' + encodeURIComponent(query),
+      })
+      if (res.ok) return res
+      process.stdout.write(`[${res.status} from ${new URL(url).host}, retrying] `)
+    } catch (err) {
+      process.stdout.write(`[${err.cause?.code || err.message}, retrying] `)
+    }
+    await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)))
+  }
+  return null
+}
+
 async function run() {
   const all = []
   for (const { category, filter } of CATEGORY_QUERIES) {
     process.stdout.write(`Fetching ${category}… `)
-    const res = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(overpassQuery(filter, bbox)),
-    })
-    if (!res.ok) {
-      console.error(`FAILED (${res.status}) — skipping ${category}`)
+    const res = await fetchOverpass(overpassQuery(filter, bbox))
+    if (!res) {
+      console.error(`FAILED — skipping ${category}`)
       continue
     }
     const data = await res.json()
