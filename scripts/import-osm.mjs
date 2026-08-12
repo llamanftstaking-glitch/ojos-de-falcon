@@ -7,6 +7,8 @@
  * Usage:
  *   node scripts/import-osm.mjs                       # NYC metro default
  *   node scripts/import-osm.mjs --bbox south,west,north,east
+ *   node scripts/import-osm.mjs --northeast           # all 9 Northeast states
+ *   node scripts/import-osm.mjs --states US-NY,US-NJ  # specific states (ISO 3166-2)
  *
  * Data © OpenStreetMap contributors, ODbL. Records are imported as
  * verification=unverified; the platform never presents OSM data as
@@ -17,8 +19,23 @@ import { dirname, join } from 'node:path'
 
 const OVERPASS_URL = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter'
 
+// US Census Northeast region, queried per state so no single Overpass
+// request has to swallow the whole region (and Canada stays excluded).
+const NORTHEAST_STATES = {
+  'US-CT': 'Connecticut',
+  'US-ME': 'Maine',
+  'US-MA': 'Massachusetts',
+  'US-NH': 'New Hampshire',
+  'US-NJ': 'New Jersey',
+  'US-NY': 'New York',
+  'US-PA': 'Pennsylvania',
+  'US-RI': 'Rhode Island',
+  'US-VT': 'Vermont',
+}
+
 // Default: NYC metro (south, west, north, east)
 let bbox = [40.48, -74.28, 41.2, -73.5]
+let states = null
 const bboxArg = process.argv.indexOf('--bbox')
 if (bboxArg !== -1 && process.argv[bboxArg + 1]) {
   const parts = process.argv[bboxArg + 1].split(',').map(Number)
@@ -26,6 +43,19 @@ if (bboxArg !== -1 && process.argv[bboxArg + 1]) {
   else {
     console.error('Invalid --bbox; expected south,west,north,east')
     process.exit(1)
+  }
+}
+if (process.argv.includes('--northeast')) {
+  states = Object.keys(NORTHEAST_STATES)
+} else {
+  const statesArg = process.argv.indexOf('--states')
+  if (statesArg !== -1 && process.argv[statesArg + 1]) {
+    states = process.argv[statesArg + 1].split(',').map((s) => s.trim().toUpperCase())
+    const bad = states.filter((s) => !/^US-[A-Z]{2}$/.test(s))
+    if (bad.length) {
+      console.error(`Invalid state codes: ${bad.join(', ')} — expected ISO 3166-2 like US-NY`)
+      process.exit(1)
+    }
   }
 }
 
@@ -39,6 +69,13 @@ const CATEGORY_QUERIES = [
 
 function overpassQuery(filter, [s, w, n, e]) {
   return `[out:json][timeout:90];(node${filter}(${s},${w},${n},${e});way${filter}(${s},${w},${n},${e});relation${filter}(${s},${w},${n},${e}););out center tags;`
+}
+
+function overpassAreaQuery(filter, isoCode) {
+  return (
+    `[out:json][timeout:300];area["ISO3166-2"="${isoCode}"]["admin_level"="4"]->.a;` +
+    `(node${filter}(area.a);way${filter}(area.a);relation${filter}(area.a););out center tags;`
+  )
 }
 
 function elementToRecord(el, category) {
@@ -102,30 +139,43 @@ async function fetchOverpass(query) {
 }
 
 async function run() {
-  const all = []
-  for (const { category, filter } of CATEGORY_QUERIES) {
-    process.stdout.write(`Fetching ${category}… `)
-    const res = await fetchOverpass(overpassQuery(filter, bbox))
-    if (!res) {
-      console.error(`FAILED — skipping ${category}`)
-      continue
+  // Keyed by osm id — regions/queries can overlap, keep first occurrence.
+  const byId = new Map()
+  const scopes = states
+    ? states.map((iso) => ({ label: NORTHEAST_STATES[iso] || iso, query: (f) => overpassAreaQuery(f, iso) }))
+    : [{ label: `bbox ${bbox.join(',')}`, query: (f) => overpassQuery(f, bbox) }]
+
+  const failures = []
+  for (const scope of scopes) {
+    console.log(`\n=== ${scope.label} ===`)
+    for (const { category, filter } of CATEGORY_QUERIES) {
+      process.stdout.write(`Fetching ${category}… `)
+      const res = await fetchOverpass(scope.query(filter))
+      if (!res) {
+        console.error(`FAILED — skipping ${category} (${scope.label})`)
+        failures.push(`${scope.label}/${category}`)
+        continue
+      }
+      const data = await res.json()
+      const records = (data.elements || []).map((el) => elementToRecord(el, category)).filter(Boolean)
+      let fresh = 0
+      for (const r of records) if (!byId.has(r.id)) { byId.set(r.id, r); fresh++ }
+      console.log(`${records.length} records (${fresh} new)`)
+      // Be polite to the public Overpass API.
+      await new Promise((r) => setTimeout(r, 2000))
     }
-    const data = await res.json()
-    const records = (data.elements || []).map((el) => elementToRecord(el, category)).filter(Boolean)
-    console.log(`${records.length} records`)
-    all.push(...records)
-    // Be polite to the public Overpass API.
-    await new Promise((r) => setTimeout(r, 2000))
   }
 
+  const all = [...byId.values()]
   if (all.length === 0) {
     console.error('No records imported — check network / Overpass availability.')
     process.exit(1)
   }
+  if (failures.length) console.error(`\nWARNING — ${failures.length} queries failed: ${failures.join(', ')}`)
 
   const outPath = join(process.cwd(), 'data', 'osm-import.json')
   mkdirSync(dirname(outPath), { recursive: true })
-  writeFileSync(outPath, JSON.stringify({ locations: all }, null, 1))
+  writeFileSync(outPath, JSON.stringify({ locations: all }))
   console.log(`\nWrote ${all.length} locations to ${outPath}`)
   console.log('Restart the app with OJOS_RESEED=1 (or on an empty database) to load them.')
 }
