@@ -16,6 +16,9 @@ FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3100
+# Docker sets HOSTNAME to the container ID, which Next standalone would bind
+# to exclusively — loopback (healthcheck) and bridge traffic both need 0.0.0.0.
+ENV HOSTNAME=0.0.0.0
 ENV OJOS_DATA_DIR=/data
 
 RUN groupadd -r ojos && useradd -r -g ojos ojos \
