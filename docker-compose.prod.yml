@@ -1,0 +1,36 @@
+# Production overlay for server deployments behind an existing reverse proxy
+# (falcon.gizergroup.com). Binds the app to localhost only; the host's
+# nginx/Caddy terminates TLS and proxies to 127.0.0.1:3100.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Reverse-proxy configs: ops/nginx-falcon.conf (nginx) or ops/Caddyfile (Caddy).
+services:
+  ojos-de-falcon:
+    ports: !override
+      - "127.0.0.1:${PORT:-3100}:3100"
+    env_file:
+      - path: .env
+        required: false
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional bundled TLS proxy — ONLY when ports 80/443 are free on the host
+  # (i.e. no existing nginx/Caddy). Enable with:  --profile proxy
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["proxy"]
+    restart: always
+    network_mode: host
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

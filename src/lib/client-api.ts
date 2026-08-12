@@ -160,9 +160,10 @@ export async function fetchSafeDestinations(center: LngLat): Promise<SafeDestina
 }
 
 /**
- * Forward geocoding for free-text destinations via Nominatim (OSM).
- * Adapter-shaped: swap NEXT_PUBLIC_GEOCODER_URL for another provider with
- * a compatible interface, or replace this module wholesale.
+ * Forward geocoding for free-text destinations. Goes through our server
+ * (/api/v1/geocode), which picks the provider — Google when a key is
+ * configured, Nominatim otherwise — so provider keys never reach the
+ * browser.
  */
 export interface GeocodeResult {
   name: string
@@ -170,23 +171,11 @@ export interface GeocodeResult {
 }
 
 export async function geocode(query: string, near?: LngLat): Promise<GeocodeResult[]> {
-  const base = process.env.NEXT_PUBLIC_GEOCODER_URL || 'https://nominatim.openstreetmap.org'
-  const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '5' })
-  if (near) {
-    // Bias results to the viewport region.
-    const d = 0.5
-    params.set('viewbox', `${near[0] - d},${near[1] + d},${near[0] + d},${near[1] - d}`)
-  }
+  const params = new URLSearchParams({ q: query })
+  if (near) params.set('at', `${near[0]},${near[1]}`)
   try {
-    const res = await fetch(`${base}/search?${params}`, {
-      headers: { Accept: 'application/json' },
-    })
-    if (!res.ok) return []
-    const items = (await res.json()) as { display_name: string; lat: string; lon: string }[]
-    return items.map((i) => ({
-      name: i.display_name,
-      lngLat: [Number(i.lon), Number(i.lat)] as LngLat,
-    }))
+    const data = await apiGet<{ results: GeocodeResult[] }>(`/api/v1/geocode?${params}`)
+    return data.results
   } catch {
     return []
   }

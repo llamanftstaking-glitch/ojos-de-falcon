@@ -1,0 +1,12 @@
+# Falcon vhost for Caddy. Two ways to use it:
+#
+# 1. Server already runs Caddy: append this block to the existing Caddyfile
+#    and `sudo systemctl reload caddy`.
+# 2. Ports 80/443 are free: run the bundled proxy container instead —
+#    docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile proxy up -d
+#
+# Caddy provisions and renews Let's Encrypt TLS automatically.
+falcon.gizergroup.com {
+    reverse_proxy 127.0.0.1:3100
+    encode gzip
+}

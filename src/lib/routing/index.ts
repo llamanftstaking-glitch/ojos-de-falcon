@@ -1,4 +1,5 @@
 import type { LngLat } from '../geo'
+import { GoogleRoutesProvider } from './google'
 import { OsrmProvider } from './osrm'
 import { DirectPathProvider } from './fallback'
 import type { Route, RoutingProvider, TravelProfile } from './types'
@@ -6,11 +7,15 @@ import type { Route, RoutingProvider, TravelProfile } from './types'
 export type { Route, RouteStep, RoutingProvider, TravelProfile } from './types'
 
 /**
- * Provider chain: try real road routing first, fall back to a clearly
- * labeled direct-path approximation so safety features keep working
- * offline or during a provider outage.
+ * Provider chain: Google Routes when GOOGLE_MAPS_API_KEY is configured,
+ * then OSRM, then a clearly labeled direct-path approximation so safety
+ * features keep working offline or during a provider outage.
  */
-const chain: RoutingProvider[] = [new OsrmProvider(), new DirectPathProvider()]
+const chain: RoutingProvider[] = [
+  new GoogleRoutesProvider(),
+  new OsrmProvider(),
+  new DirectPathProvider(),
+]
 
 export async function computeRoute(
   from: LngLat,
