@@ -227,7 +227,7 @@ function addSafetyLayers(map: maplibregl.Map) {
     layout: {
       'text-field': ['get', 'point_count_abbreviated'],
       'text-size': 12,
-      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+      'text-font': ['Noto Sans Bold'],
     },
     paint: { 'text-color': '#ffffff' },
   })
@@ -247,7 +247,7 @@ function addSafetyLayers(map: maplibregl.Map) {
       'text-offset': [0, 1.6],
       'text-anchor': 'top',
       'text-optional': true,
-      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+      'text-font': ['Noto Sans Regular'],
     },
     paint: {
       'text-color': '#94a3b8',
