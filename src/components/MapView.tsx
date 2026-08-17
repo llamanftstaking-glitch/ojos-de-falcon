@@ -185,7 +185,10 @@ export default function MapView() {
     }
   }, [userLocation])
 
-  return <div ref={containerRef} className="absolute inset-0" aria-label="Map" role="application" />
+  // h-full/w-full, not just absolute inset-0: maplibre-gl.css forces
+  // .maplibregl-map to position:relative, which voids inset sizing and
+  // collapses the container to zero height.
+  return <div ref={containerRef} className="absolute inset-0 h-full w-full" aria-label="Map" role="application" />
 }
 
 function addSafetyLayers(map: maplibregl.Map) {
