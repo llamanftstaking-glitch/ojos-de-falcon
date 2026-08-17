@@ -18,6 +18,7 @@ module.exports = {
         emergency: 'rgb(var(--emergency) / <alpha-value>)',
         hazard: 'rgb(var(--hazard) / <alpha-value>)',
         verified: 'rgb(var(--verified) / <alpha-value>)',
+        falcon: 'rgb(var(--falcon) / <alpha-value>)',
       },
       borderRadius: {
         sheet: '1.25rem',

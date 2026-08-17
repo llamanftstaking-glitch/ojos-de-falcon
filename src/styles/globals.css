@@ -33,6 +33,9 @@
   --marker-court: 124 58 137;
   --marker-government: 100 116 139;
   --marker-safe: 22 163 74;
+
+  /* Brand gold — the falcon. */
+  --falcon: 212 160 23;
 }
 
 .dark {
@@ -55,6 +58,8 @@
   --marker-court: 196 145 220;
   --marker-government: 148 163 184;
   --marker-safe: 74 222 128;
+
+  --falcon: 234 179 8;
 }
 
 html,
@@ -99,4 +104,18 @@ body {
   border-radius: 9999px;
   background: rgb(var(--safety) / 0.35);
   animation: pulse-ring 2.4s ease-out infinite;
+}
+
+/* Gold radar pulse behind the falcon user marker. */
+.falcon-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: rgb(var(--falcon) / 0.32);
+  animation: pulse-ring 2.4s ease-out infinite;
+  z-index: -1;
+}
+.falcon-glow svg {
+  filter: drop-shadow(0 0 7px rgb(var(--falcon) / 0.65)) drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
 }

@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection, Point } from 'geojson'
 import { getMapStyle } from '@/lib/map-style'
 import { renderMarkerIcon, markerIconId } from '@/lib/marker-icons'
+import { createFalconElement } from '@/lib/falcon-marker'
 import { ALL_CATEGORIES, categoriesInGroup, CATEGORIES } from '@/lib/categories'
 import { fetchLocationsInBBox, fetchLocation } from '@/lib/client-api'
 import { useAppStore } from '@/store/app-store'
@@ -50,6 +51,9 @@ export default function MapView() {
   const darkMode = useAppStore((s) => s.darkMode)
   const route = useAppStore((s) => s.route)
   const userLocation = useAppStore((s) => s.userLocation)
+  const userHeading = useAppStore((s) => s.userHeading)
+  const driving = useAppStore((s) => s.driving)
+  const follow = useAppStore((s) => s.follow)
 
   function scheduleFetch() {
     if (fetchTimer.current) clearTimeout(fetchTimer.current)
@@ -105,6 +109,13 @@ export default function MapView() {
       scheduleFetch()
     })
     map.on('moveend', scheduleFetch)
+
+    // Manual pan while driving breaks the chase cam; the recenter button
+    // (or re-toggling Falcon Vision) re-engages it.
+    map.on('dragstart', () => {
+      const s = useAppStore.getState()
+      if (s.driving && s.follow) s.setFollow(false)
+    })
 
     map.on('click', 'safety-points', async (e) => {
       const feature = e.features?.[0]
@@ -164,7 +175,7 @@ export default function MapView() {
     syncRoute(map, route?.geometry ?? null)
   }, [route])
 
-  // --- user location marker ------------------------------------------------
+  // --- user location marker: the gold falcon -------------------------------
   const userMarkerRef = useRef<maplibregl.Marker | null>(null)
   useEffect(() => {
     const map = mapRef.current
@@ -175,15 +186,47 @@ export default function MapView() {
       return
     }
     if (!userMarkerRef.current) {
-      const el = document.createElement('div')
-      el.className = 'gps-pulse relative h-4 w-4 rounded-full border-2 border-white shadow-float'
-      el.style.backgroundColor = 'rgb(37 99 235)'
-      el.setAttribute('aria-label', 'Your location')
-      userMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat(userLocation).addTo(map)
+      // rotationAlignment 'map': the falcon rotates with true bearing, so in
+      // heading-up driving mode it always points up the screen.
+      userMarkerRef.current = new maplibregl.Marker({
+        element: createFalconElement(),
+        rotationAlignment: 'map',
+        pitchAlignment: 'map',
+      })
+        .setLngLat(userLocation)
+        .setRotation(userHeading ?? 0)
+        .addTo(map)
     } else {
       userMarkerRef.current.setLngLat(userLocation)
+      userMarkerRef.current.setRotation(userHeading ?? 0)
     }
-  }, [userLocation])
+  }, [userLocation, userHeading])
+
+  // --- Falcon Vision chase camera ------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (driving && follow && userLocation) {
+      map.easeTo({
+        center: userLocation,
+        bearing: userHeading ?? map.getBearing(),
+        pitch: 58,
+        zoom: Math.max(map.getZoom(), 16),
+        duration: 900,
+        essential: true,
+      })
+    }
+  }, [driving, follow, userLocation, userHeading])
+
+  // Leaving driving mode: settle back to a flat north-up map.
+  const wasDriving = useRef(false)
+  useEffect(() => {
+    const map = mapRef.current
+    if (map && wasDriving.current && !driving) {
+      map.easeTo({ pitch: 0, bearing: 0, duration: 700 })
+    }
+    wasDriving.current = driving
+  }, [driving])
 
   // h-full/w-full, not just absolute inset-0: maplibre-gl.css forces
   // .maplibregl-map to position:relative, which voids inset sizing and
@@ -282,7 +325,7 @@ function addRouteLayers(map: maplibregl.Map) {
       type: 'line',
       source: ROUTE_SOURCE_ID,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': 'rgb(37, 99, 235)', 'line-width': 5.5 },
+      paint: { 'line-color': 'rgb(212, 160, 23)', 'line-width': 5.5 },
     },
     'safety-clusters'
   )

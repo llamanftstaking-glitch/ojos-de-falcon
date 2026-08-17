@@ -24,7 +24,8 @@ export function useGeolocation() {
         setLocationPermission('granted')
         setUserLocation(
           [pos.coords.longitude, pos.coords.latitude],
-          pos.coords.heading ?? null
+          pos.coords.heading ?? null,
+          pos.coords.speed ?? null
         )
       },
       (err) => {
@@ -90,6 +91,103 @@ export function useNavigationProgress() {
         .catch(() => {})
     }
   }, [navigating, route, userLocation, setProgress, setRouteSafety])
+}
+
+/**
+ * Falcon Vision: keep the screen awake while driving. Re-acquires the lock
+ * when the tab becomes visible again (the OS releases it on background).
+ */
+export function useWakeLock() {
+  const driving = useAppStore((s) => s.driving)
+
+  useEffect(() => {
+    if (!driving || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return
+    let lock: WakeLockSentinel | null = null
+    let disposed = false
+
+    const acquire = async () => {
+      try {
+        lock = await navigator.wakeLock.request('screen')
+      } catch {
+        // Low battery or unsupported — driving mode still works, screen may sleep.
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !disposed) acquire()
+    }
+    acquire()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      disposed = true
+      document.removeEventListener('visibilitychange', onVisibility)
+      lock?.release().catch(() => {})
+    }
+  }, [driving])
+}
+
+const VOICE_GROUPS: { spoken: string; categories: string[] }[] = [
+  { spoken: 'Police', categories: ['police', 'sheriff', 'state_police'] },
+  { spoken: 'Fire station', categories: ['fire_station'] },
+  { spoken: 'Emergency room', categories: ['emergency_room'] },
+  { spoken: 'Hospital', categories: ['hospital'] },
+]
+
+const CALLOUT_RANGE_M = 1300
+const CALLOUT_COOLDOWN_MS = 5 * 60_000
+
+function spokenDistance(meters: number): string {
+  const miles = meters / 1609.344
+  if (miles < 0.15) return 'right here'
+  return `${miles.toFixed(1)} miles`
+}
+
+export function speak(text: string) {
+  try {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+    const u = new SpeechSynthesisUtterance(text)
+    u.rate = 1
+    u.lang = 'en-US'
+    window.speechSynthesis.speak(u)
+  } catch {
+    // No voice available — HUD still shows everything visually.
+  }
+}
+
+/**
+ * Falcon Vision voice callouts: as safety infrastructure comes into range
+ * while driving, announce the closest facility per group hands-free.
+ * Per-location cooldown so the falcon doesn't repeat itself at every light.
+ */
+export function useVoiceCallouts() {
+  const driving = useAppStore((s) => s.driving)
+  const voiceOn = useAppStore((s) => s.voiceOn)
+  const nearby = useAppStore((s) => s.nearby)
+  const announced = useRef<Map<string, number>>(new Map())
+
+  useEffect(() => {
+    if (!driving || !voiceOn || nearby.length === 0) return
+    const now = Date.now()
+    for (const group of VOICE_GROUPS) {
+      const hit = nearby
+        .filter((r) => group.categories.includes(r.location.category) && r.distanceMeters <= CALLOUT_RANGE_M)
+        .sort((a, b) => a.distanceMeters - b.distanceMeters)[0]
+      if (!hit) continue
+      const last = announced.current.get(hit.location.id) ?? 0
+      if (now - last < CALLOUT_COOLDOWN_MS) continue
+      announced.current.set(hit.location.id, now)
+      speak(`${group.spoken}, ${spokenDistance(hit.distanceMeters)}. ${hit.location.name}.`)
+    }
+  }, [driving, voiceOn, nearby])
+
+  // Leaving driving mode: cut any queued speech immediately.
+  useEffect(() => {
+    if (driving) return
+    try {
+      window.speechSynthesis?.cancel()
+    } catch {
+      // Fine.
+    }
+  }, [driving])
 }
 
 export function useDarkModeSync() {

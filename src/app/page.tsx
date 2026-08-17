@@ -3,7 +3,15 @@
 import dynamic from 'next/dynamic'
 import { useCallback } from 'react'
 import { useAppStore } from '@/store/app-store'
-import { useGeolocation, useNearbySafety, useNavigationProgress, useDarkModeSync } from '@/components/hooks'
+import {
+  useGeolocation,
+  useNearbySafety,
+  useNavigationProgress,
+  useDarkModeSync,
+  useWakeLock,
+  useVoiceCallouts,
+  speak,
+} from '@/components/hooks'
 import { fetchRoute, fetchRouteSafety } from '@/lib/client-api'
 import { fitRoute, recenter, flyTo } from '@/components/map-controller'
 import SearchBar from '@/components/SearchBar'
@@ -16,6 +24,7 @@ import SafeDestinationsSheet from '@/components/SafeDestinationsSheet'
 import SOSButton from '@/components/SOSButton'
 import SOSSheet from '@/components/SOSSheet'
 import NavigationChrome from '@/components/NavigationChrome'
+import DrivingHUD from '@/components/DrivingHUD'
 import type { SafetyLocation } from '@/lib/types'
 
 // MapLibre needs the browser; render the map client-side only.
@@ -33,6 +42,8 @@ export default function Home() {
   useGeolocation()
   useNearbySafety()
   useNavigationProgress()
+  useWakeLock()
+  useVoiceCallouts()
 
   const sheet = useAppStore((s) => s.sheet)
   const setSheet = useAppStore((s) => s.setSheet)
@@ -40,6 +51,8 @@ export default function Home() {
   const userLocation = useAppStore((s) => s.userLocation)
   const darkMode = useAppStore((s) => s.darkMode)
   const setDarkMode = useAppStore((s) => s.setDarkMode)
+  const driving = useAppStore((s) => s.driving)
+  const setDriving = useAppStore((s) => s.setDriving)
 
   const startRouteTo = useCallback(async (dest: { name: string; lngLat: [number, number] }) => {
     const state = useAppStore.getState()
@@ -74,6 +87,7 @@ export default function Home() {
 
   const endNavigation = useCallback(() => {
     useAppStore.getState().clearRoute()
+    useAppStore.getState().setDriving(false)
     useAppStore.getState().setSheet({ kind: 'closed' })
     recenter(useAppStore.getState().userLocation)
   }, [])
@@ -103,11 +117,34 @@ export default function Home() {
         <button
           type="button"
           aria-label="Recenter map on your location"
-          onClick={() => recenter(userLocation)}
+          onClick={() => {
+            useAppStore.getState().setFollow(true)
+            recenter(userLocation)
+          }}
           disabled={!userLocation}
           className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface-raised text-lg text-safety shadow-float disabled:opacity-40"
         >
           ◎
+        </button>
+        <button
+          type="button"
+          aria-label={driving ? 'Exit Falcon Vision driving mode' : 'Enter Falcon Vision driving mode'}
+          onClick={() => {
+            const next = !driving
+            setDriving(next)
+            if (next) {
+              if (userLocation) flyTo(userLocation, 16.5)
+              if (useAppStore.getState().voiceOn) speak('Falcon vision engaged.')
+            }
+          }}
+          disabled={!userLocation}
+          className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border shadow-float disabled:opacity-40 ${
+            driving ? 'border-falcon bg-falcon/15 text-falcon' : 'border-line bg-surface-raised text-falcon'
+          }`}
+        >
+          <svg width="24" height="24" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+            <path d="M32 3 C34.2 8.5 35.2 12.5 35.2 17.5 L56 29.5 C58.2 30.8 59.5 32.6 59.5 35 L59.5 39 L36.5 31.5 L35.5 43.5 L43.5 50 L43.5 55 L33.8 51.2 L32 47.5 L30.2 51.2 L20.5 55 L20.5 50 L28.5 43.5 L27.5 31.5 L4.5 39 L4.5 35 C4.5 32.6 5.8 30.8 8 29.5 L28.8 17.5 C28.8 12.5 29.8 8.5 32 3 Z" />
+          </svg>
         </button>
         <SOSButton />
       </div>
@@ -129,6 +166,9 @@ export default function Home() {
       {/* Navigation UI */}
       {navigating && <NavigationChrome onEnd={endNavigation} />}
 
+      {/* Falcon Vision driving HUD */}
+      {driving && <DrivingHUD />}
+
       {/* Sheets */}
       <BottomSheet
         open={sheet.kind !== 'closed'}
@@ -142,9 +182,13 @@ export default function Home() {
         {sheet.kind === 'route-preview' && (
           <RoutePreviewSheet
             onStart={() => {
-              useAppStore.getState().setNavigating(true)
+              const state = useAppStore.getState()
+              state.setNavigating(true)
+              // Navigation is driving: engage Falcon Vision automatically.
+              state.setDriving(true)
               setSheet({ kind: 'closed' })
-              const loc = useAppStore.getState().userLocation
+              if (state.voiceOn) speak('Falcon vision engaged. Route active.')
+              const loc = state.userLocation
               if (loc) flyTo(loc, 16)
             }}
             onCancel={endNavigation}

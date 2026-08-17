@@ -21,7 +21,15 @@ interface AppState {
   // Location
   userLocation: LngLat | null
   userHeading: number | null
+  /** GPS ground speed in m/s (null when the device doesn't report it). */
+  speedMps: number | null
   locationPermission: LocationPermission
+
+  // Falcon Vision — driving mode
+  driving: boolean
+  /** Camera chases the falcon; panning the map manually breaks the chase. */
+  follow: boolean
+  voiceOn: boolean
 
   // Safety layer
   safetyMode: boolean
@@ -45,8 +53,11 @@ interface AppState {
   sheet: SheetView
   darkMode: boolean
 
-  setUserLocation: (loc: LngLat | null, heading?: number | null) => void
+  setUserLocation: (loc: LngLat | null, heading?: number | null, speedMps?: number | null) => void
   setLocationPermission: (p: LocationPermission) => void
+  setDriving: (on: boolean) => void
+  setFollow: (on: boolean) => void
+  setVoiceOn: (on: boolean) => void
   setSafetyMode: (on: boolean) => void
   setFilterGroup: (g: FilterGroup) => void
   setNearby: (results: NearbyResult[], offline: boolean, savedAt: number | null) => void
@@ -63,7 +74,11 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   userLocation: null,
   userHeading: null,
+  speedMps: null,
   locationPermission: 'unknown',
+  driving: false,
+  follow: true,
+  voiceOn: true,
   safetyMode: true,
   filterGroup: 'all',
   nearby: [],
@@ -78,8 +93,19 @@ export const useAppStore = create<AppState>((set) => ({
   sheet: { kind: 'closed' },
   darkMode: true,
 
-  setUserLocation: (loc, heading = null) => set({ userLocation: loc, userHeading: heading }),
+  setUserLocation: (loc, heading = null, speedMps = null) =>
+    set((s) => ({
+      userLocation: loc,
+      // GPS heading goes null/NaN when stationary — keep the last known one
+      // so the falcon doesn't snap back to north at every red light.
+      userHeading:
+        heading !== null && heading !== undefined && !Number.isNaN(heading) ? heading : s.userHeading,
+      speedMps: speedMps !== undefined && speedMps !== null && !Number.isNaN(speedMps) ? speedMps : null,
+    })),
   setLocationPermission: (locationPermission) => set({ locationPermission }),
+  setDriving: (driving) => set(driving ? { driving, follow: true } : { driving }),
+  setFollow: (follow) => set({ follow }),
+  setVoiceOn: (voiceOn) => set({ voiceOn }),
   setSafetyMode: (safetyMode) => set({ safetyMode }),
   setFilterGroup: (filterGroup) => set({ filterGroup }),
   setNearby: (nearby, nearbyOffline, nearbySavedAt) =>
