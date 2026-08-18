@@ -9,6 +9,7 @@ import { renderMarkerIcon, markerIconId } from '@/lib/marker-icons'
 import { createFalconElement } from '@/lib/falcon-marker'
 import { ALL_CATEGORIES, categoriesInGroup, CATEGORIES } from '@/lib/categories'
 import { fetchLocationsInBBox, fetchLocation } from '@/lib/client-api'
+import { haversineMeters } from '@/lib/geo'
 import { useAppStore } from '@/store/app-store'
 import { registerMap } from './map-controller'
 import type { SafetyLocation } from '@/lib/types'
@@ -160,7 +161,8 @@ export default function MapView() {
       addRouteLayers(map)
       if (useAppStore.getState().driving) addBuildingLayer(map)
       scheduleFetch()
-      syncRoute(map, route?.geometry ?? null)
+      const s = useAppStore.getState()
+      syncRoute(map, s.route?.geometry ?? null, s.navigating ? s.progressMeters : 0)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [darkMode])
@@ -171,12 +173,14 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safetyMode, filterGroup])
 
-  // --- route layer sync ----------------------------------------------------
+  // --- route layer sync (traveled portion drawn dimmed) --------------------
+  const progressMeters = useAppStore((s) => s.progressMeters)
+  const navigating = useAppStore((s) => s.navigating)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
-    syncRoute(map, route?.geometry ?? null)
-  }, [route])
+    syncRoute(map, route?.geometry ?? null, navigating ? progressMeters : 0)
+  }, [route, progressMeters, navigating])
 
   // --- user location marker: the gold falcon -------------------------------
   const userMarkerRef = useRef<maplibregl.Marker | null>(null)
@@ -342,17 +346,20 @@ function addRouteLayers(map: maplibregl.Map) {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
   })
-  // Waze-style ribbon: soft outer glow, light casing, bright gold core.
+  // Google-style ribbon: cyan glow + white casing + bright cyan core for
+  // the road ahead; the traveled portion renders dim gray.
+  const remainingOnly = ['==', ['get', 'kind'], 'remaining'] as any
   map.addLayer(
     {
       id: 'route-glow',
       type: 'line',
       source: ROUTE_SOURCE_ID,
+      filter: remainingOnly,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': 'rgb(231, 184, 75)',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 12, 16, 22],
-        'line-opacity': 0.28,
+        'line-color': 'rgb(53, 223, 242)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 12, 16, 24],
+        'line-opacity': 0.3,
         'line-blur': 6,
       },
     },
@@ -363,10 +370,11 @@ function addRouteLayers(map: maplibregl.Map) {
       id: 'route-casing',
       type: 'line',
       source: ROUTE_SOURCE_ID,
+      filter: remainingOnly,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': 'rgba(255,255,255,0.95)',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 9, 16, 13],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 9, 16, 14],
       },
     },
     'safety-clusters'
@@ -376,10 +384,25 @@ function addRouteLayers(map: maplibregl.Map) {
       id: 'route-line',
       type: 'line',
       source: ROUTE_SOURCE_ID,
+      filter: remainingOnly,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': 'rgb(224, 178, 58)',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5.5, 16, 9],
+        'line-color': 'rgb(53, 223, 242)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5.5, 16, 10],
+      },
+    },
+    'safety-clusters'
+  )
+  map.addLayer(
+    {
+      id: 'route-traveled',
+      type: 'line',
+      source: ROUTE_SOURCE_ID,
+      filter: ['==', ['get', 'kind'], 'traveled'] as any,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': 'rgba(148, 163, 184, 0.55)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5, 16, 9],
       },
     },
     'safety-clusters'
@@ -428,17 +451,47 @@ function removeBuildingLayer(map: maplibregl.Map) {
   }
 }
 
-function syncRoute(map: maplibregl.Map, geometry: [number, number][] | null) {
+function syncRoute(map: maplibregl.Map, geometry: [number, number][] | null, progressMeters = 0) {
   const source = map.getSource(ROUTE_SOURCE_ID) as maplibregl.GeoJSONSource | undefined
   if (!source) return
-  source.setData(
-    geometry
-      ? {
-          type: 'FeatureCollection',
-          features: [
-            { type: 'Feature', geometry: { type: 'LineString', coordinates: geometry }, properties: {} },
-          ],
-        }
-      : { type: 'FeatureCollection', features: [] }
-  )
+  if (!geometry) {
+    source.setData({ type: 'FeatureCollection', features: [] })
+    return
+  }
+  const [traveled, remaining] = splitAtDistance(geometry, progressMeters)
+  const features: GeoJSON.Feature[] = []
+  if (traveled.length >= 2) {
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: traveled },
+      properties: { kind: 'traveled' },
+    })
+  }
+  if (remaining.length >= 2) {
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: remaining },
+      properties: { kind: 'remaining' },
+    })
+  }
+  source.setData({ type: 'FeatureCollection', features })
+}
+
+/** Split a polyline at a distance along it (meters). */
+function splitAtDistance(line: [number, number][], meters: number): [[number, number][], [number, number][]] {
+  if (meters <= 0) return [[], line]
+  let acc = 0
+  for (let i = 0; i < line.length - 1; i++) {
+    const seg = haversineMeters(line[i], line[i + 1])
+    if (acc + seg >= meters) {
+      const t = seg > 0 ? (meters - acc) / seg : 0
+      const cut: [number, number] = [
+        line[i][0] + (line[i + 1][0] - line[i][0]) * t,
+        line[i][1] + (line[i + 1][1] - line[i][1]) * t,
+      ]
+      return [[...line.slice(0, i + 1), cut], [cut, ...line.slice(i + 1)]]
+    }
+    acc += seg
+  }
+  return [line, []]
 }

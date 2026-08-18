@@ -109,8 +109,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* Right-side floating buttons — every control says what it does in words */}
-      <div className="pointer-events-none absolute bottom-28 right-3 z-20 flex flex-col items-end gap-3">
+      {/* Right-side floating buttons — every control says what it does in words.
+          During navigation only SOS stays (lifted above the trip bar). */}
+      <div className={`pointer-events-none absolute right-3 z-20 flex flex-col items-end gap-3 ${navigating ? 'bottom-44' : 'bottom-28'}`}>
+        {!navigating && (<>
         <button
           type="button"
           aria-label={darkMode ? 'Switch to light colors' : 'Switch to dark colors'}
@@ -154,6 +156,7 @@ export default function Home() {
           </svg>
           <span className="text-[11px] font-bold tracking-wide">{driving ? 'STOP' : 'DRIVE'}</span>
         </button>
+        </>)}
         <SOSButton />
       </div>
 

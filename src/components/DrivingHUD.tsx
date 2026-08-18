@@ -43,29 +43,25 @@ export default function DrivingHUD() {
 
   return (
     <>
-      {/* Speedometer — bottom-left, out of the way of sheets and nav bar */}
-      <div className="pointer-events-none absolute bottom-28 left-3 z-20">
+      {/* Speedometer — bottom-left, above the trip bar when navigating */}
+      <div className={`pointer-events-none absolute left-3 z-20 ${navigating ? 'bottom-[10.5rem]' : 'bottom-28'}`}>
         <div className="flex flex-col items-center rounded-2xl border border-falcon/40 bg-surface-raised/95 px-4 py-2.5 shadow-float backdrop-blur">
           <span className="text-3xl font-black tabular-nums leading-none text-ink">{mph ?? '—'}</span>
           <span className="mt-0.5 text-[10px] font-bold tracking-widest text-falcon">MPH</span>
         </div>
       </div>
 
-      {/* Top-left controls (below nav banner when navigating) */}
-      <div
-        className={`pointer-events-auto absolute left-3 z-20 flex flex-col gap-2 ${
-          navigating ? 'top-[max(11rem,calc(env(safe-area-inset-top)+10.5rem))]' : 'top-[max(0.75rem,env(safe-area-inset-top))]'
-        }`}
-      >
-        {!navigating && (
-          <button
-            type="button"
-            onClick={() => setDriving(false)}
-            className="press rounded-xl border border-falcon/50 bg-surface-raised/95 px-4 py-3 text-sm font-black tracking-wider text-falcon shadow-float backdrop-blur"
-          >
-            STOP DRIVING
-          </button>
-        )}
+      {/* Top-left controls — patrol mode only; NavigationChrome owns these
+          controls during turn-by-turn navigation */}
+      {!navigating && (
+      <div className="pointer-events-auto absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setDriving(false)}
+          className="press rounded-xl border border-falcon/50 bg-surface-raised/95 px-4 py-3 text-sm font-black tracking-wider text-falcon shadow-float backdrop-blur"
+        >
+          STOP DRIVING
+        </button>
         <button
           type="button"
           aria-label="Change camera view"
@@ -101,6 +97,7 @@ export default function DrivingHUD() {
           <span className="text-xs font-black tracking-wide">{voiceOn ? 'VOICE ON' : 'VOICE OFF'}</span>
         </button>
       </div>
+      )}
 
       {/* Live nearest-safety chips — hidden while navigating (NavigationChrome
           shows its own route-aware safety bar there) */}
