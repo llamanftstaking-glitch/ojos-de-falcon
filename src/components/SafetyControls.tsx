@@ -19,7 +19,7 @@ export default function SafetyControls() {
           onClick={() => setSafetyMode(!safetyMode)}
           aria-pressed={safetyMode}
           className={clsx(
-            'shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold shadow-float transition-colors',
+            'press shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold shadow-float transition-colors',
             safetyMode
               ? 'border-safety bg-safety text-white'
               : 'border-line bg-surface-raised text-ink-muted'
@@ -35,7 +35,7 @@ export default function SafetyControls() {
               onClick={() => setFilterGroup(g.id)}
               aria-pressed={filterGroup === g.id}
               className={clsx(
-                'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium shadow-float transition-colors',
+                'press shrink-0 rounded-full border px-4 py-2.5 text-sm font-medium shadow-float transition-colors',
                 filterGroup === g.id
                   ? 'border-safety-strong bg-safety-strong text-white'
                   : 'border-line bg-surface-raised text-ink-muted hover:text-ink'

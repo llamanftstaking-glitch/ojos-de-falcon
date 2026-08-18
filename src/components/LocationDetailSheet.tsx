@@ -44,10 +44,10 @@ export default function LocationDetailSheet({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-0.5 text-2xl">{def?.glyph}</span>
+        <span aria-hidden className="mt-0.5 text-3xl">{def?.glyph}</span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-bold leading-tight text-ink">{location.name}</h2>
-          <p className="mt-0.5 text-xs text-ink-muted">
+          <h2 className="text-xl font-bold leading-tight text-ink">{location.name}</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">
             {(location.subcategory && SUBCATEGORY_LABELS[location.subcategory]) || def?.label}
             {location.jurisdiction ? ` · ${location.jurisdiction}` : ''}
           </p>
@@ -56,7 +56,7 @@ export default function LocationDetailSheet({
       </div>
 
       {(distance !== null || location.is24Hours !== null) && (
-        <div className="flex gap-2 text-xs">
+        <div className="flex gap-2 text-sm">
           {distance !== null && (
             <span className="rounded-lg bg-surface-overlay px-2.5 py-1.5 font-medium text-ink">
               {formatMiles(distance)} · ~{estimateDriveMinutes(distance)} min drive
@@ -68,7 +68,7 @@ export default function LocationDetailSheet({
         </div>
       )}
 
-      <dl className="flex flex-col gap-2 rounded-xl bg-surface-overlay p-3 text-sm">
+      <dl className="flex flex-col gap-2.5 rounded-xl bg-surface-overlay p-4 text-base">
         <DetailRow label="Address" value={addressLine || null} />
         <DetailRow label="Phone" value={location.phone} href={location.phone ? `tel:${location.phone}` : undefined} />
         <DetailRow
@@ -98,16 +98,16 @@ export default function LocationDetailSheet({
         <button
           type="button"
           onClick={() => onNavigate(location)}
-          className="flex-1 rounded-xl bg-safety px-4 py-3 text-sm font-bold text-white shadow-float"
+          className="press flex-1 rounded-2xl bg-safety px-4 py-4 text-base font-black text-white shadow-float"
         >
-          Navigate
+          🧭 Take me there
         </button>
         {location.phone && (
           <a
             href={`tel:${location.phone}`}
-            className="flex-1 rounded-xl border border-line bg-surface-raised px-4 py-3 text-center text-sm font-bold text-ink"
+            className="press flex-1 rounded-2xl bg-verified px-4 py-4 text-center text-base font-black text-white shadow-float"
           >
-            Call
+            📞 Call
           </a>
         )}
         <button
@@ -121,7 +121,7 @@ export default function LocationDetailSheet({
               navigator.clipboard?.writeText(`${location.name}${addressLine ? ` — ${addressLine}` : ''}`).catch(() => {})
             }
           }}
-          className="rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm font-bold text-ink"
+          className="press rounded-2xl border border-line bg-surface-raised px-4 py-4 text-base font-bold text-ink"
         >
           Share
         </button>
@@ -133,7 +133,7 @@ export default function LocationDetailSheet({
 function DetailRow({ label, value, href }: { label: string; value: string | null; href?: string }) {
   return (
     <div className="flex items-baseline gap-3">
-      <dt className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</dt>
+      <dt className="w-28 shrink-0 text-sm font-medium uppercase tracking-wide text-ink-faint">{label}</dt>
       <dd className="min-w-0 flex-1 text-ink">
         {value ? (
           href ? (

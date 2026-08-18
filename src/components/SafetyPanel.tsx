@@ -32,7 +32,7 @@ export default function SafetyPanel() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-ink">Safety near you</h2>
+        <h2 className="text-lg font-bold text-ink">Safety near you</h2>
         {nearbyOffline && nearbySavedAt && (
           <span className="rounded bg-hazard/15 px-2 py-0.5 text-[11px] font-medium text-hazard">
             Offline data · {timeAgo(nearbySavedAt)}
@@ -60,18 +60,18 @@ export default function SafetyPanel() {
           <li key={location.id}>
             <button
               type="button"
-              className="flex w-full items-center gap-3 py-3 text-left hover:bg-surface-overlay"
+              className="flex w-full items-center gap-3 py-4 text-left hover:bg-surface-overlay"
               onClick={() => {
                 flyTo([location.longitude, location.latitude], 15)
                 useAppStore.getState().setSheet({ kind: 'detail', location })
               }}
             >
-              <span aria-hidden className="w-6 text-center text-lg">
+              <span aria-hidden className="w-8 text-center text-2xl">
                 {CATEGORIES[location.category]?.glyph}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-ink">{location.name}</span>
-                <span className="block text-xs text-ink-muted">
+                <span className="block truncate text-base font-medium text-ink">{location.name}</span>
+                <span className="block text-sm text-ink-muted">
                   {CATEGORIES[location.category]?.label} · {formatMiles(distanceMeters)} · ~{etaMinutes} min
                 </span>
               </span>
@@ -86,12 +86,12 @@ export default function SafetyPanel() {
           type="button"
           onClick={takeMeSomewhereSafe}
           disabled={!userLocation}
-          className="w-full rounded-xl bg-safety px-4 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-float transition-opacity disabled:opacity-40"
+          className="press w-full rounded-2xl bg-safety px-4 py-5 text-lg font-black uppercase tracking-wide text-white shadow-float transition-opacity disabled:opacity-40"
         >
           Take me somewhere safe
         </button>
         {!userLocation && (
-          <p className="text-center text-xs text-ink-faint">Needs your location to pick a safe destination.</p>
+          <p className="text-center text-sm text-ink-faint">Needs your location to pick a safe destination.</p>
         )}
       </div>
     </div>

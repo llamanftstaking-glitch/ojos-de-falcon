@@ -81,6 +81,24 @@ body {
 .maplibregl-popup-content {
   border-radius: 12px;
 }
+/* Vendor zoom/compass buttons are 29px by default — too small for older
+   hands. WCAG target minimum is 44px; we go 48px. */
+.maplibregl-ctrl-group button {
+  width: 48px !important;
+  height: 48px !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  transform: scale(1.25);
+}
+
+/* Every interactive control gives visible press feedback. */
+button:active,
+a:active {
+  transition: transform 80ms ease-out;
+}
+.press:active {
+  transform: scale(0.96);
+}
 
 /* Reduced motion: kill nonessential animation. */
 @media (prefers-reduced-motion: reduce) {

@@ -25,6 +25,7 @@ import SOSButton from '@/components/SOSButton'
 import SOSSheet from '@/components/SOSSheet'
 import NavigationChrome from '@/components/NavigationChrome'
 import DrivingHUD from '@/components/DrivingHUD'
+import WelcomeCard from '@/components/WelcomeCard'
 import type { SafetyLocation } from '@/lib/types'
 
 // MapLibre needs the browser; render the map client-side only.
@@ -104,31 +105,33 @@ export default function Home() {
         </div>
       )}
 
-      {/* Right-side floating buttons */}
+      {/* Right-side floating buttons — every control says what it does in words */}
       <div className="pointer-events-none absolute bottom-28 right-3 z-20 flex flex-col items-end gap-3">
         <button
           type="button"
-          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={darkMode ? 'Switch to light colors' : 'Switch to dark colors'}
           onClick={() => setDarkMode(!darkMode)}
-          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface-raised text-lg shadow-float"
+          className="press pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl border border-line bg-surface-raised shadow-float"
         >
-          {darkMode ? '☀' : '☾'}
+          <span className="text-xl leading-none">{darkMode ? '☀' : '☾'}</span>
+          <span className="text-[11px] font-bold tracking-wide text-ink-muted">{darkMode ? 'LIGHT' : 'DARK'}</span>
         </button>
         <button
           type="button"
-          aria-label="Recenter map on your location"
+          aria-label="Center the map on where you are"
           onClick={() => {
             useAppStore.getState().setFollow(true)
             recenter(userLocation)
           }}
           disabled={!userLocation}
-          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface-raised text-lg text-safety shadow-float disabled:opacity-40"
+          className="press pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl border border-line bg-surface-raised text-safety shadow-float disabled:opacity-40"
         >
-          ◎
+          <span className="text-xl leading-none">◎</span>
+          <span className="text-[11px] font-bold tracking-wide">FIND ME</span>
         </button>
         <button
           type="button"
-          aria-label={driving ? 'Exit Falcon Vision driving mode' : 'Enter Falcon Vision driving mode'}
+          aria-label={driving ? 'Stop driving mode' : 'Start driving mode — the falcon watches the road with you'}
           onClick={() => {
             const next = !driving
             setDriving(next)
@@ -138,13 +141,14 @@ export default function Home() {
             }
           }}
           disabled={!userLocation}
-          className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border shadow-float disabled:opacity-40 ${
+          className={`press pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl border shadow-float disabled:opacity-40 ${
             driving ? 'border-falcon bg-falcon/15 text-falcon' : 'border-line bg-surface-raised text-falcon'
           }`}
         >
-          <svg width="24" height="24" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
             <path d="M32 3 C34.2 8.5 35.2 12.5 35.2 17.5 L56 29.5 C58.2 30.8 59.5 32.6 59.5 35 L59.5 39 L36.5 31.5 L35.5 43.5 L43.5 50 L43.5 55 L33.8 51.2 L32 47.5 L30.2 51.2 L20.5 55 L20.5 50 L28.5 43.5 L27.5 31.5 L4.5 39 L4.5 35 C4.5 32.6 5.8 30.8 8 29.5 L28.8 17.5 C28.8 12.5 29.8 8.5 32 3 Z" />
           </svg>
+          <span className="text-[11px] font-bold tracking-wide">{driving ? 'STOP' : 'DRIVE'}</span>
         </button>
         <SOSButton />
       </div>
@@ -155,10 +159,10 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setSheet({ kind: 'nearby' })}
-            className="pointer-events-auto w-full max-w-xl rounded-2xl border border-line bg-surface-raised px-4 py-3 text-center shadow-float"
+            className="press pointer-events-auto w-full max-w-xl rounded-2xl border border-line bg-surface-raised px-4 py-4 text-center shadow-float"
           >
-            <span className="mx-auto mb-1.5 block h-1 w-10 rounded-full bg-ink-faint/50" />
-            <span className="text-sm font-bold uppercase tracking-wide text-ink">Safety near you</span>
+            <span className="mx-auto mb-1.5 block h-1.5 w-12 rounded-full bg-ink-faint/50" />
+            <span className="text-base font-bold uppercase tracking-wide text-ink">Safety near you</span>
           </button>
         </div>
       )}
@@ -168,6 +172,9 @@ export default function Home() {
 
       {/* Falcon Vision driving HUD */}
       {driving && <DrivingHUD />}
+
+      {/* One-time first-run explainer */}
+      <WelcomeCard />
 
       {/* Sheets */}
       <BottomSheet

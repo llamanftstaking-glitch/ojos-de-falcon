@@ -25,13 +25,13 @@ export default function RoutePreviewSheet({ onStart, onCancel }: {
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h2 className="truncate text-base font-bold text-ink">{destination.name}</h2>
-        <p className="mt-0.5 text-sm text-ink-muted">
+        <h2 className="truncate text-xl font-bold text-ink">{destination.name}</h2>
+        <p className="mt-0.5 text-base text-ink-muted">
           {minutes} min · {formatMiles(route.distanceMeters)} · ETA{' '}
           {eta.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
         </p>
         {route.approximate && (
-          <p className="mt-1.5 rounded-lg bg-hazard/15 px-2.5 py-1.5 text-xs font-medium text-hazard">
+          <p className="mt-1.5 rounded-lg bg-hazard/15 px-2.5 py-1.5 text-sm font-medium text-hazard">
             Direct-path estimate — road routing is unavailable right now. Times and distances are
             approximate and turn-by-turn directions are not shown.
           </p>
@@ -40,8 +40,8 @@ export default function RoutePreviewSheet({ onStart, onCancel }: {
 
       {routeSummary && (
         <div className="rounded-xl bg-surface-overlay p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Route safety</p>
-          <p className="mt-1 text-sm text-ink">
+          <p className="text-xs font-bold uppercase tracking-wide text-ink-faint">Route safety</p>
+          <p className="mt-1 text-base text-ink">
             {routeSummary.policeCount} police · {routeSummary.fireCount} fire ·{' '}
             {routeSummary.medicalCount} medical{routeSummary.courtCount > 0 ? ` · ${routeSummary.courtCount} courts` : ''} near this route
           </p>
@@ -51,11 +51,11 @@ export default function RoutePreviewSheet({ onStart, onCancel }: {
       {routeSafety.length > 0 && (
         <ul className="flex flex-col divide-y divide-line">
           {routeSafety.slice(0, 4).map((r) => (
-            <li key={r.location.id} className="flex items-center gap-3 py-2">
-              <span aria-hidden className="w-6 text-center">{CATEGORIES[r.location.category]?.glyph}</span>
+            <li key={r.location.id} className="flex items-center gap-3 py-2.5">
+              <span aria-hidden className="w-7 text-center text-xl">{CATEGORIES[r.location.category]?.glyph}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-ink">{r.location.name}</span>
-                <span className="block text-xs text-ink-muted">
+                <span className="block truncate text-base text-ink">{r.location.name}</span>
+                <span className="block text-sm text-ink-muted">
                   {r.distanceAheadMeters >= 0 ? `${r.minutesAhead} min ahead` : 'Behind you'} ·{' '}
                   {formatMiles(r.distanceFromRouteMeters)} off route
                 </span>
@@ -69,14 +69,14 @@ export default function RoutePreviewSheet({ onStart, onCancel }: {
         <button
           type="button"
           onClick={onStart}
-          className="flex-1 rounded-xl bg-safety px-4 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-float"
+          className="press flex-1 rounded-2xl bg-safety px-4 py-5 text-lg font-black uppercase tracking-wide text-white shadow-float"
         >
-          Start route
+          Start driving
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-line bg-surface-raised px-5 py-3.5 text-sm font-bold text-ink"
+          className="press rounded-2xl border border-line bg-surface-raised px-5 py-5 text-base font-bold text-ink"
         >
           Cancel
         </button>

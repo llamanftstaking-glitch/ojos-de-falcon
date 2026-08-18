@@ -289,7 +289,7 @@ function addSafetyLayers(map: maplibregl.Map) {
       // Tier-1 facilities win placement conflicts.
       'symbol-sort-key': ['get', 'tier'],
       'text-field': ['step', ['zoom'], '', 13, ['get', 'name']],
-      'text-size': 11,
+      'text-size': 12.5,
       'text-offset': [0, 1.6],
       'text-anchor': 'top',
       'text-optional': true,

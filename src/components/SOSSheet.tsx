@@ -44,45 +44,45 @@ export default function SOSSheet({
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-center text-sm font-bold uppercase tracking-widest text-emergency">Emergency</h2>
+      <h2 className="text-center text-lg font-black uppercase tracking-widest text-emergency">Emergency</h2>
       <a
         href="tel:911"
-        className="w-full rounded-xl bg-emergency px-4 py-4 text-center text-base font-black uppercase tracking-wide text-white shadow-float"
+        className="press w-full rounded-2xl bg-emergency px-4 py-6 text-center text-xl font-black uppercase tracking-wide text-white shadow-float"
       >
-        Call emergency services (911)
+        📞 Call 911 now
       </a>
       <button
         type="button"
         onClick={() => navigateToNearest('police')}
         disabled={!userLocation}
-        className="w-full rounded-xl border border-line bg-surface-overlay px-4 py-3.5 text-sm font-bold text-ink disabled:opacity-40"
+        className="press w-full rounded-2xl border border-line bg-surface-overlay px-4 py-4 text-base font-bold text-ink disabled:opacity-40"
       >
-        Navigate to nearest police
+        🚓 Take me to the nearest police
       </button>
       <button
         type="button"
         onClick={() => navigateToNearest('medical')}
         disabled={!userLocation}
-        className="w-full rounded-xl border border-line bg-surface-overlay px-4 py-3.5 text-sm font-bold text-ink disabled:opacity-40"
+        className="press w-full rounded-2xl border border-line bg-surface-overlay px-4 py-4 text-base font-bold text-ink disabled:opacity-40"
       >
-        Navigate to nearest hospital / ER
+        🏥 Take me to the nearest hospital
       </button>
       <button
         type="button"
         onClick={shareLocation}
         disabled={!userLocation}
-        className="w-full rounded-xl border border-line bg-surface-overlay px-4 py-3.5 text-sm font-bold text-ink disabled:opacity-40"
+        className="press w-full rounded-2xl border border-line bg-surface-overlay px-4 py-4 text-base font-bold text-ink disabled:opacity-40"
       >
-        Share my location
+        📍 Send my location to family
       </button>
       <button
         type="button"
         onClick={() => setSheet({ kind: 'closed' })}
-        className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-ink-muted"
+        className="press w-full rounded-2xl px-4 py-4 text-base font-semibold text-ink-muted"
       >
-        Cancel
+        Cancel — I&apos;m okay
       </button>
-      <p className="text-center text-[11px] text-ink-faint">
+      <p className="text-center text-xs text-ink-faint">
         Calls are placed by your device&apos;s dialer — you confirm before dialing. In the US the emergency number is 911.
       </p>
     </div>

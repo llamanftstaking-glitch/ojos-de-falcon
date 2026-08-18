@@ -44,7 +44,7 @@ export default function SOSButton() {
     <button
       type="button"
       aria-label="SOS — press and hold for two seconds to open emergency options"
-      className="pointer-events-auto relative flex h-16 w-16 select-none items-center justify-center rounded-full bg-emergency text-base font-black tracking-wider text-white shadow-float active:scale-95"
+      className="pointer-events-auto relative flex h-20 w-20 select-none flex-col items-center justify-center rounded-full bg-emergency font-black tracking-wider text-white shadow-float active:scale-95"
       onPointerDown={startHold}
       onPointerUp={cancelHold}
       onPointerLeave={cancelHold}
@@ -54,9 +54,10 @@ export default function SOSButton() {
       {progress > 0 && (
         <span aria-hidden className="absolute -inset-1.5 rounded-full opacity-80" style={ringStyle} />
       )}
-      <span className="relative">SOS</span>
+      <span className="relative text-lg leading-none">SOS</span>
+      <span className="relative mt-0.5 text-[10px] font-bold leading-none opacity-90">HOLD</span>
       {progress > 0 && (
-        <span className="absolute -bottom-7 whitespace-nowrap rounded bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink shadow-float">
+        <span className="absolute -bottom-8 whitespace-nowrap rounded-lg bg-surface-raised px-2.5 py-1 text-xs font-semibold text-ink shadow-float">
           Keep holding…
         </span>
       )}

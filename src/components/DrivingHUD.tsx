@@ -55,26 +55,27 @@ export default function DrivingHUD() {
           <button
             type="button"
             onClick={() => setDriving(false)}
-            className="rounded-xl border border-falcon/50 bg-surface-raised/95 px-3 py-2 text-[11px] font-black tracking-wider text-falcon shadow-float backdrop-blur"
+            className="press rounded-xl border border-falcon/50 bg-surface-raised/95 px-4 py-3 text-sm font-black tracking-wider text-falcon shadow-float backdrop-blur"
           >
-            END PATROL
+            STOP DRIVING
           </button>
         )}
         <button
           type="button"
-          aria-label={voiceOn ? 'Mute voice callouts' : 'Enable voice callouts'}
+          aria-label={voiceOn ? 'Turn voice off' : 'Turn voice on'}
           onClick={() => {
             const next = !voiceOn
             setVoiceOn(next)
             if (next) speak('Falcon voice on.')
           }}
-          className={`rounded-xl border px-3 py-2 text-lg shadow-float backdrop-blur ${
+          className={`press flex items-center gap-1.5 rounded-xl border px-4 py-3 shadow-float backdrop-blur ${
             voiceOn
               ? 'border-falcon/50 bg-surface-raised/95 text-falcon'
               : 'border-line bg-surface-raised/95 text-ink-faint'
           }`}
         >
-          {voiceOn ? '🔊' : '🔇'}
+          <span className="text-lg leading-none">{voiceOn ? '🔊' : '🔇'}</span>
+          <span className="text-xs font-black tracking-wide">{voiceOn ? 'VOICE ON' : 'VOICE OFF'}</span>
         </button>
       </div>
 
@@ -91,11 +92,11 @@ export default function DrivingHUD() {
                   flyTo([result.location.longitude, result.location.latitude], 15)
                   useAppStore.getState().setSheet({ kind: 'detail', location: result.location })
                 }}
-                className="flex flex-1 flex-col items-center rounded-xl border border-falcon/30 bg-surface-raised/95 px-2 py-2.5 shadow-float backdrop-blur"
+                className="press flex flex-1 flex-col items-center rounded-xl border border-falcon/30 bg-surface-raised/95 px-2 py-3 shadow-float backdrop-blur"
               >
-                <span className="text-[11px] font-black tracking-wider text-falcon">{label}</span>
-                <span className="text-sm font-bold text-ink">{formatMiles(result.distanceMeters)}</span>
-                <span className="max-w-full truncate text-[10px] text-ink-faint">
+                <span className="text-[13px] font-black tracking-wider text-falcon">{label}</span>
+                <span className="text-lg font-bold text-ink">{formatMiles(result.distanceMeters)}</span>
+                <span className="max-w-full truncate text-xs text-ink-faint">
                   {CATEGORIES[result.location.category]?.shortLabel}
                 </span>
               </button>

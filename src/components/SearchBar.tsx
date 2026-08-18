@@ -64,22 +64,22 @@ export default function SearchBar({ onPickDestination }: {
 
   return (
     <div className="pointer-events-auto relative w-full max-w-xl">
-      <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface-raised px-4 py-3 shadow-float">
-        <span aria-hidden className="text-ink-faint">⌕</span>
+      <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-surface-raised px-4 py-4 shadow-float">
+        <span aria-hidden className="text-xl text-ink-faint">⌕</span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Where are you going?"
+          placeholder="Where do you want to go?"
           aria-label={`Search destinations and safety locations in ${BRAND.name}`}
-          className="w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-faint"
+          className="w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
           enterKeyHint="search"
         />
-        {searching && <span className="animate-pulse text-xs text-ink-faint">…</span>}
+        {searching && <span className="animate-pulse text-sm text-ink-faint">…</span>}
         {query && (
           <button
             type="button"
             aria-label="Clear search"
-            className="text-ink-faint hover:text-ink"
+            className="press -m-2 p-2 text-lg text-ink-faint hover:text-ink"
             onClick={() => { setQuery(''); setSuggestions(null) }}
           >
             ✕
@@ -90,22 +90,22 @@ export default function SearchBar({ onPickDestination }: {
       {suggestions && (
         <div className="absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-float">
           {suggestions.safety.length === 0 && suggestions.places.length === 0 && !searching && (
-            <p className="px-4 py-3 text-sm text-ink-muted">No results. Try a different name, address, or ZIP.</p>
+            <p className="px-4 py-4 text-base text-ink-muted">No results. Try a different name, address, or ZIP.</p>
           )}
           {suggestions.safety.length > 0 && (
             <div>
-              <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Safety locations</p>
+              <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-faint">Safety locations</p>
               {suggestions.safety.map((loc) => (
                 <button
                   key={loc.id}
                   type="button"
                   onClick={() => pickSafety(loc)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-overlay"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-overlay"
                 >
-                  <span aria-hidden>{CATEGORIES[loc.category]?.glyph ?? '•'}</span>
+                  <span aria-hidden className="text-xl">{CATEGORIES[loc.category]?.glyph ?? '•'}</span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm text-ink">{loc.name}</span>
-                    <span className="block truncate text-xs text-ink-muted">
+                    <span className="block truncate text-base text-ink">{loc.name}</span>
+                    <span className="block truncate text-sm text-ink-muted">
                       {CATEGORIES[loc.category]?.label}{loc.city ? ` · ${loc.city}` : ''}
                     </span>
                   </span>
@@ -115,16 +115,16 @@ export default function SearchBar({ onPickDestination }: {
           )}
           {suggestions.places.length > 0 && (
             <div className="border-t border-line">
-              <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Places</p>
+              <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-faint">Places</p>
               {suggestions.places.map((place, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => pickPlace(place)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-overlay"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-overlay"
                 >
                   <span aria-hidden className="text-ink-faint">➤</span>
-                  <span className="truncate text-sm text-ink">{place.name}</span>
+                  <span className="truncate text-base text-ink">{place.name}</span>
                 </button>
               ))}
             </div>

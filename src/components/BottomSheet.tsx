@@ -35,11 +35,12 @@ export default function BottomSheet({
           type="button"
           onClick={onClose}
           aria-label="Close panel"
-          className="mx-auto mt-2 block h-6 w-16 cursor-pointer"
+          className="mx-auto mt-1 flex h-10 w-full max-w-[10rem] cursor-pointer flex-col items-center justify-center gap-1"
         >
-          <span className="mx-auto block h-1.5 w-12 rounded-full bg-ink-faint/60" />
+          <span className="block h-1.5 w-14 rounded-full bg-ink-faint/60" />
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Tap to close</span>
         </button>
-        <div className="max-h-[55dvh] overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1">
+        <div className="max-h-[60dvh] overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
           {children}
         </div>
       </section>

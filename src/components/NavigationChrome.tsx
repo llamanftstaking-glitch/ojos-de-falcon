@@ -63,18 +63,18 @@ export default function NavigationChrome({ onEnd }: { onEnd: () => void }) {
       <div className="pointer-events-auto absolute inset-x-0 top-0 z-20 flex justify-center p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="w-full max-w-xl rounded-2xl border border-line bg-surface-raised p-4 shadow-float">
           {route.approximate ? (
-            <p className="text-sm font-medium text-hazard">
+            <p className="text-base font-medium text-hazard">
               Direct-path guidance — road directions unavailable. Head toward your destination.
             </p>
           ) : current.nextInstruction ? (
             <>
-              <p className="text-lg font-bold leading-snug text-ink">{current.nextInstruction}</p>
-              <p className="mt-0.5 text-sm text-ink-muted">in {formatMiles(current.distanceToStep)}</p>
+              <p className="text-2xl font-bold leading-snug text-ink">{current.nextInstruction}</p>
+              <p className="mt-0.5 text-base text-ink-muted">in {formatMiles(current.distanceToStep)}</p>
             </>
           ) : (
-            <p className="text-lg font-bold text-ink">Continue to {destination?.name ?? 'destination'}</p>
+            <p className="text-2xl font-bold text-ink">Continue to {destination?.name ?? 'destination'}</p>
           )}
-          <div className="mt-2 flex items-center justify-between border-t border-line pt-2 text-sm">
+          <div className="mt-2 flex items-center justify-between border-t border-line pt-2 text-base">
             <span className="font-semibold text-ink">
               ETA {current.eta.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
             </span>
@@ -84,7 +84,7 @@ export default function NavigationChrome({ onEnd }: { onEnd: () => void }) {
             <button
               type="button"
               onClick={onEnd}
-              className="rounded-lg bg-emergency/10 px-3 py-1.5 text-xs font-bold uppercase text-emergency"
+              className="press rounded-xl bg-emergency/10 px-4 py-2.5 text-sm font-black uppercase text-emergency"
             >
               End
             </button>
@@ -104,13 +104,13 @@ export default function NavigationChrome({ onEnd }: { onEnd: () => void }) {
                   flyTo([result.location.longitude, result.location.latitude], 15)
                   useAppStore.getState().setSheet({ kind: 'detail', location: result.location })
                 }}
-                className="flex flex-1 flex-col items-center rounded-xl border border-line bg-surface-raised px-2 py-2.5 shadow-float"
+                className="press flex flex-1 flex-col items-center rounded-xl border border-line bg-surface-raised px-2 py-3 shadow-float"
               >
-                <span className="text-[11px] font-black tracking-wider text-safety">{label}</span>
-                <span className="text-xs font-medium text-ink">
+                <span className="text-[13px] font-black tracking-wider text-safety">{label}</span>
+                <span className="text-base font-bold text-ink">
                   {result.distanceAheadMeters >= 0 ? `${result.minutesAhead} min` : formatMiles(Math.abs(result.distanceAheadMeters))}
                 </span>
-                <span className="max-w-full truncate text-[10px] text-ink-faint">
+                <span className="max-w-full truncate text-xs text-ink-faint">
                   {CATEGORIES[result.location.category]?.shortLabel}
                 </span>
               </button>
