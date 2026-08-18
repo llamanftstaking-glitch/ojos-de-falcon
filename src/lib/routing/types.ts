@@ -1,11 +1,34 @@
 import type { LngLat } from '../geo'
 
+/**
+ * Provider-agnostic maneuver vocabulary — drives the big turn arrow in the
+ * navigation banner. Providers map their own enums onto this set.
+ */
+export type Maneuver =
+  | 'depart'
+  | 'straight'
+  | 'turn-left'
+  | 'turn-right'
+  | 'slight-left'
+  | 'slight-right'
+  | 'sharp-left'
+  | 'sharp-right'
+  | 'uturn'
+  | 'merge'
+  | 'fork-left'
+  | 'fork-right'
+  | 'ramp-left'
+  | 'ramp-right'
+  | 'roundabout'
+  | 'arrive'
+
 export interface RouteStep {
   instruction: string
   distanceMeters: number
   durationSeconds: number
   /** Index into the route geometry where this step begins. */
   geometryIndex: number
+  maneuver?: Maneuver
 }
 
 export interface Route {

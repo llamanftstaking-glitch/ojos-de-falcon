@@ -1,5 +1,5 @@
 import type { LngLat } from '../geo'
-import type { Route, RouteStep, RoutingProvider, TravelProfile } from './types'
+import type { Maneuver, Route, RouteStep, RoutingProvider, TravelProfile } from './types'
 
 /**
  * Google Routes API adapter (Routes API v2). Active when
@@ -12,6 +12,38 @@ const ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes'
 const TRAVEL_MODE: Record<TravelProfile, string> = {
   driving: 'DRIVE',
   walking: 'WALK',
+}
+
+const GOOGLE_MANEUVERS: Record<string, Maneuver> = {
+  DEPART: 'depart',
+  STRAIGHT: 'straight',
+  NAME_CHANGE: 'straight',
+  TURN_LEFT: 'turn-left',
+  TURN_RIGHT: 'turn-right',
+  TURN_SLIGHT_LEFT: 'slight-left',
+  TURN_SLIGHT_RIGHT: 'slight-right',
+  TURN_SHARP_LEFT: 'sharp-left',
+  TURN_SHARP_RIGHT: 'sharp-right',
+  UTURN_LEFT: 'uturn',
+  UTURN_RIGHT: 'uturn',
+  MERGE: 'merge',
+  FORK_LEFT: 'fork-left',
+  FORK_RIGHT: 'fork-right',
+  RAMP_LEFT: 'ramp-left',
+  RAMP_RIGHT: 'ramp-right',
+  ON_RAMP_LEFT: 'ramp-left',
+  ON_RAMP_RIGHT: 'ramp-right',
+  OFF_RAMP_LEFT: 'ramp-left',
+  OFF_RAMP_RIGHT: 'ramp-right',
+  ROUNDABOUT_LEFT: 'roundabout',
+  ROUNDABOUT_RIGHT: 'roundabout',
+  DESTINATION: 'arrive',
+  DESTINATION_LEFT: 'arrive',
+  DESTINATION_RIGHT: 'arrive',
+}
+
+function normalizeGoogleManeuver(m?: string): Maneuver | undefined {
+  return m ? GOOGLE_MANEUVERS[m] : undefined
 }
 
 export class GoogleRoutesProvider implements RoutingProvider {
@@ -59,6 +91,7 @@ export class GoogleRoutesProvider implements RoutingProvider {
             distanceMeters: step.distanceMeters ?? 0,
             durationSeconds: parseDuration(step.staticDuration),
             geometryIndex: 0, // Google steps don't map 1:1 onto polyline indices
+            maneuver: normalizeGoogleManeuver(step.navigationInstruction?.maneuver),
           })
         }
       }

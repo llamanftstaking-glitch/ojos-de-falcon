@@ -10,6 +10,7 @@ import {
   useDarkModeSync,
   useWakeLock,
   useVoiceCallouts,
+  useTurnCallouts,
   speak,
 } from '@/components/hooks'
 import { fetchRoute, fetchRouteSafety } from '@/lib/client-api'
@@ -45,6 +46,7 @@ export default function Home() {
   useNavigationProgress()
   useWakeLock()
   useVoiceCallouts()
+  useTurnCallouts()
 
   const sheet = useAppStore((s) => s.sheet)
   const setSheet = useAppStore((s) => s.setSheet)

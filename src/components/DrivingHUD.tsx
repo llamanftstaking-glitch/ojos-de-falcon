@@ -25,6 +25,8 @@ export default function DrivingHUD() {
   const voiceOn = useAppStore((s) => s.voiceOn)
   const setVoiceOn = useAppStore((s) => s.setVoiceOn)
   const setDriving = useAppStore((s) => s.setDriving)
+  const driveView = useAppStore((s) => s.driveView)
+  const setDriveView = useAppStore((s) => s.setDriveView)
 
   const mph = speedMps !== null ? Math.round(speedMps * 2.23694) : null
 
@@ -49,8 +51,12 @@ export default function DrivingHUD() {
         </div>
       </div>
 
-      {/* Top-left controls: voice + end patrol (kept clear of nav banner center) */}
-      <div className="pointer-events-auto absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2">
+      {/* Top-left controls (below nav banner when navigating) */}
+      <div
+        className={`pointer-events-auto absolute left-3 z-20 flex flex-col gap-2 ${
+          navigating ? 'top-[max(11rem,calc(env(safe-area-inset-top)+10.5rem))]' : 'top-[max(0.75rem,env(safe-area-inset-top))]'
+        }`}
+      >
         {!navigating && (
           <button
             type="button"
@@ -60,6 +66,23 @@ export default function DrivingHUD() {
             STOP DRIVING
           </button>
         )}
+        <button
+          type="button"
+          aria-label="Change camera view"
+          onClick={() => {
+            const order = ['chase', 'north', 'overview'] as const
+            const next = order[(order.indexOf(driveView) + 1) % order.length]
+            setDriveView(next)
+          }}
+          className="press flex items-center gap-1.5 rounded-xl border border-falcon/50 bg-surface-raised/95 px-4 py-3 shadow-float backdrop-blur"
+        >
+          <span className="text-lg leading-none" aria-hidden>
+            {driveView === 'chase' ? '🛰' : driveView === 'north' ? '⬆' : '🗺'}
+          </span>
+          <span className="text-xs font-black tracking-wide text-falcon">
+            {driveView === 'chase' ? '3D VIEW' : driveView === 'north' ? 'FLAT VIEW' : 'FULL ROUTE'}
+          </span>
+        </button>
         <button
           type="button"
           aria-label={voiceOn ? 'Turn voice off' : 'Turn voice on'}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store/app-store'
-import { fetchNearby, fetchRouteSafety } from '@/lib/client-api'
+import { fetchNearby, fetchRoute, fetchRouteSafety } from '@/lib/client-api'
 import { nearestPointOnLine } from '@/lib/geo'
 import type { LngLat } from '@/lib/geo'
 
@@ -66,6 +66,9 @@ export function useNearbySafety() {
  * While navigating: project the GPS position onto the route to track
  * progress, and refresh safety-along-route as progress advances.
  */
+const OFF_ROUTE_METERS = 60
+const REROUTE_COOLDOWN_MS = 12_000
+
 export function useNavigationProgress() {
   const navigating = useAppStore((s) => s.navigating)
   const route = useAppStore((s) => s.route)
@@ -73,11 +76,52 @@ export function useNavigationProgress() {
   const setProgress = useAppStore((s) => s.setProgress)
   const setRouteSafety = useAppStore((s) => s.setRouteSafety)
   const lastSafetyRefresh = useRef(0)
+  const offRouteStreak = useRef(0)
+  const rerouting = useRef(false)
+  const lastReroute = useRef(0)
 
   useEffect(() => {
     if (!navigating || !route || !userLocation) return
     const projection = nearestPointOnLine(userLocation, route.geometry)
     setProgress(projection.alongMeters)
+
+    // Waze-style recalculation: consistently far from the line → new route
+    // from where the driver actually is. Two consecutive fixes avoid
+    // rerouting on a single GPS jump.
+    if (projection.distanceMeters > OFF_ROUTE_METERS) {
+      offRouteStreak.current += 1
+      const state = useAppStore.getState()
+      const dest = state.destination
+      if (
+        offRouteStreak.current >= 2 &&
+        !rerouting.current &&
+        Date.now() - lastReroute.current > REROUTE_COOLDOWN_MS &&
+        dest
+      ) {
+        rerouting.current = true
+        lastReroute.current = Date.now()
+        if (state.voiceOn) speak('Recalculating.')
+        fetchRoute(userLocation, dest.lngLat)
+          .then((fresh) => {
+            const s = useAppStore.getState()
+            if (!s.navigating) return
+            s.setRoute(fresh)
+            s.setProgress(0)
+            fetchRouteSafety({ geometry: fresh.geometry, durationSeconds: fresh.durationSeconds })
+              .then(({ results, summary }) => s.setRouteSafety(results, summary))
+              .catch(() => {})
+          })
+          .catch(() => {
+            // Provider unreachable — keep guiding along the old route.
+          })
+          .finally(() => {
+            rerouting.current = false
+            offRouteStreak.current = 0
+          })
+      }
+    } else {
+      offRouteStreak.current = 0
+    }
 
     const now = Date.now()
     if (now - lastSafetyRefresh.current > 30_000) {
@@ -91,6 +135,48 @@ export function useNavigationProgress() {
         .catch(() => {})
     }
   }, [navigating, route, userLocation, setProgress, setRouteSafety])
+}
+
+/**
+ * Spoken turn-by-turn: announce the upcoming maneuver at ~a quarter mile
+ * out and again right before the turn. One announcement per step per band.
+ */
+export function useTurnCallouts() {
+  const navigating = useAppStore((s) => s.navigating)
+  const voiceOn = useAppStore((s) => s.voiceOn)
+  const route = useAppStore((s) => s.route)
+  const progressMeters = useAppStore((s) => s.progressMeters)
+  const spoken = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    spoken.current.clear()
+  }, [route])
+
+  useEffect(() => {
+    if (!navigating || !voiceOn || !route || route.approximate) return
+    let cumulative = 0
+    for (let i = 0; i < route.steps.length; i++) {
+      const step = route.steps[i]
+      const stepEnd = cumulative + step.distanceMeters
+      if (stepEnd >= progressMeters) {
+        const distanceToTurn = stepEnd - progressMeters
+        const feet = Math.round(distanceToTurn * 3.28084)
+        const next = route.steps[i + 1]
+        const target = next ?? step
+        const farKey = `${i}-far`
+        const nearKey = `${i}-near`
+        if (distanceToTurn < 420 && distanceToTurn > 90 && !spoken.current.has(farKey)) {
+          spoken.current.add(farKey)
+          speak(`In ${feet > 900 ? 'a quarter mile' : `${Math.round(feet / 100) * 100} feet`}, ${target.instruction}`)
+        } else if (distanceToTurn <= 90 && !spoken.current.has(nearKey)) {
+          spoken.current.add(nearKey)
+          speak(target.instruction)
+        }
+        break
+      }
+      cumulative = stepEnd
+    }
+  }, [navigating, voiceOn, route, progressMeters])
 }
 
 /**

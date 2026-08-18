@@ -1,5 +1,5 @@
 import type { LngLat } from '../geo'
-import type { Route, RouteStep, RoutingProvider, TravelProfile } from './types'
+import type { Maneuver, Route, RouteStep, RoutingProvider, TravelProfile } from './types'
 
 /**
  * OSRM adapter. Defaults to the public demo server, which is fine for
@@ -38,6 +38,7 @@ export class OsrmProvider implements RoutingProvider {
             distanceMeters: step.distance,
             durationSeconds: step.duration,
             geometryIndex: geomIndex,
+            maneuver: normalizeOsrmManeuver(step),
           })
           geomIndex += Math.max(0, (step.geometry?.coordinates?.length ?? 1) - 1)
         }
@@ -55,6 +56,40 @@ export class OsrmProvider implements RoutingProvider {
     } finally {
       clearTimeout(timer)
     }
+  }
+}
+
+function normalizeOsrmManeuver(step: any): Maneuver | undefined {
+  const type = step.maneuver?.type ?? ''
+  const modifier: string = step.maneuver?.modifier ?? ''
+  const side = modifier.includes('left') ? 'left' : modifier.includes('right') ? 'right' : ''
+  switch (type) {
+    case 'depart':
+      return 'depart'
+    case 'arrive':
+      return 'arrive'
+    case 'turn':
+    case 'end of road':
+      if (modifier === 'uturn') return 'uturn'
+      if (modifier.startsWith('slight')) return side === 'left' ? 'slight-left' : 'slight-right'
+      if (modifier.startsWith('sharp')) return side === 'left' ? 'sharp-left' : 'sharp-right'
+      if (side) return side === 'left' ? 'turn-left' : 'turn-right'
+      return 'straight'
+    case 'merge':
+      return 'merge'
+    case 'on ramp':
+    case 'off ramp':
+      return side === 'left' ? 'ramp-left' : 'ramp-right'
+    case 'fork':
+      return side === 'left' ? 'fork-left' : 'fork-right'
+    case 'roundabout':
+    case 'rotary':
+      return 'roundabout'
+    case 'continue':
+      if (modifier === 'uturn') return 'uturn'
+      return 'straight'
+    default:
+      return undefined
   }
 }
 

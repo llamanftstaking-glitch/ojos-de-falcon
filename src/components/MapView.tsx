@@ -54,6 +54,8 @@ export default function MapView() {
   const userHeading = useAppStore((s) => s.userHeading)
   const driving = useAppStore((s) => s.driving)
   const follow = useAppStore((s) => s.follow)
+  const driveView = useAppStore((s) => s.driveView)
+  const speedMps = useAppStore((s) => s.speedMps)
 
   function scheduleFetch() {
     if (fetchTimer.current) clearTimeout(fetchTimer.current)
@@ -156,6 +158,7 @@ export default function MapView() {
     map.once('styledata', () => {
       addSafetyLayers(map)
       addRouteLayers(map)
+      if (useAppStore.getState().driving) addBuildingLayer(map)
       scheduleFetch()
       syncRoute(map, route?.geometry ?? null)
     })
@@ -202,28 +205,58 @@ export default function MapView() {
     }
   }, [userLocation, userHeading])
 
-  // --- Falcon Vision chase camera ------------------------------------------
+  // --- Falcon Vision cameras -----------------------------------------------
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
-    if (driving && follow && userLocation) {
-      map.easeTo({
-        center: userLocation,
-        bearing: userHeading ?? map.getBearing(),
-        pitch: 58,
-        zoom: Math.max(map.getZoom(), 16),
-        duration: 900,
-        essential: true,
-      })
+    if (!map || !driving) return
+    if (driveView === 'overview') {
+      // One-shot: frame the whole route (or pull back over the falcon).
+      if (route && route.geometry.length >= 2) {
+        let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity
+        for (const [lng, lat] of route.geometry) {
+          west = Math.min(west, lng); south = Math.min(south, lat)
+          east = Math.max(east, lng); north = Math.max(north, lat)
+        }
+        map.fitBounds(
+          [[west, south], [east, north]],
+          { padding: { top: 140, bottom: 160, left: 48, right: 48 }, pitch: 0, bearing: 0, duration: 900 }
+        )
+      } else if (userLocation) {
+        map.easeTo({ center: userLocation, zoom: 13, pitch: 0, bearing: 0, duration: 900 })
+      }
+      return
     }
-  }, [driving, follow, userLocation, userHeading])
+    if (!follow || !userLocation) return
+    if (driveView === 'north') {
+      map.easeTo({ center: userLocation, bearing: 0, pitch: 0, zoom: 16, duration: 900, essential: true })
+      return
+    }
+    // Chase view: heading-up, tilted, zoom eases out as speed rises so the
+    // driver sees further down the road.
+    const speed = speedMps ?? 0
+    const zoom = 17 - Math.min(Math.max(speed, 0), 27) / 27 * 1.8
+    map.easeTo({
+      center: userLocation,
+      bearing: userHeading ?? map.getBearing(),
+      pitch: 58,
+      zoom,
+      duration: 900,
+      essential: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driving, follow, driveView, userLocation, userHeading, speedMps])
 
-  // Leaving driving mode: settle back to a flat north-up map.
+  // 3D buildings while driving; settle flat when leaving driving mode.
   const wasDriving = useRef(false)
   useEffect(() => {
     const map = mapRef.current
-    if (map && wasDriving.current && !driving) {
-      map.easeTo({ pitch: 0, bearing: 0, duration: 700 })
+    if (!map) return
+    if (driving) {
+      if (map.isStyleLoaded()) addBuildingLayer(map)
+      else map.once('styledata', () => addBuildingLayer(map))
+    } else {
+      removeBuildingLayer(map)
+      if (wasDriving.current) map.easeTo({ pitch: 0, bearing: 0, duration: 700 })
     }
     wasDriving.current = driving
   }, [driving])
@@ -309,13 +342,32 @@ function addRouteLayers(map: maplibregl.Map) {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
   })
+  // Waze-style ribbon: soft outer glow, light casing, bright gold core.
+  map.addLayer(
+    {
+      id: 'route-glow',
+      type: 'line',
+      source: ROUTE_SOURCE_ID,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': 'rgb(231, 184, 75)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 12, 16, 22],
+        'line-opacity': 0.28,
+        'line-blur': 6,
+      },
+    },
+    'safety-clusters'
+  )
   map.addLayer(
     {
       id: 'route-casing',
       type: 'line',
       source: ROUTE_SOURCE_ID,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': 'rgba(255,255,255,0.9)', 'line-width': 9 },
+      paint: {
+        'line-color': 'rgba(255,255,255,0.95)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 9, 16, 13],
+      },
     },
     'safety-clusters'
   )
@@ -325,10 +377,55 @@ function addRouteLayers(map: maplibregl.Map) {
       type: 'line',
       source: ROUTE_SOURCE_ID,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': 'rgb(212, 160, 23)', 'line-width': 5.5 },
+      paint: {
+        'line-color': 'rgb(224, 178, 58)',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5.5, 16, 9],
+      },
     },
     'safety-clusters'
   )
+}
+
+const BUILDINGS_LAYER_ID = 'falcon-3d-buildings'
+
+/**
+ * Extruded buildings for the driving chase view — the Waze/Google-style 3D
+ * city feel. Reads the basemap's own vector source (OpenMapTiles schema),
+ * so it works with any style that carries a `building` source-layer.
+ */
+function addBuildingLayer(map: maplibregl.Map) {
+  if (map.getLayer(BUILDINGS_LAYER_ID)) return
+  const sources = map.getStyle().sources ?? {}
+  const vectorSource = Object.keys(sources).find((k) => (sources[k] as { type?: string }).type === 'vector')
+  if (!vectorSource) return
+  try {
+    map.addLayer(
+      {
+        id: BUILDINGS_LAYER_ID,
+        type: 'fill-extrusion',
+        source: vectorSource,
+        'source-layer': 'building',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': 'rgba(120, 132, 158, 0.75)',
+          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 12],
+          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+          'fill-extrusion-opacity': 0.55,
+        },
+      },
+      'route-glow'
+    )
+  } catch {
+    // Style without a building layer — chase view still works, just flat.
+  }
+}
+
+function removeBuildingLayer(map: maplibregl.Map) {
+  try {
+    if (map.getLayer(BUILDINGS_LAYER_ID)) map.removeLayer(BUILDINGS_LAYER_ID)
+  } catch {
+    // Style mid-swap — nothing to remove.
+  }
 }
 
 function syncRoute(map: maplibregl.Map, geometry: [number, number][] | null) {

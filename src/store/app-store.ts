@@ -9,6 +9,8 @@ import type { RouteSafetySummary } from '@/lib/route-safety'
 
 export type LocationPermission = 'unknown' | 'granted' | 'denied' | 'unavailable'
 
+export type DriveView = 'chase' | 'north' | 'overview'
+
 export type SheetView =
   | { kind: 'closed' }
   | { kind: 'nearby' }
@@ -30,6 +32,8 @@ interface AppState {
   /** Camera chases the falcon; panning the map manually breaks the chase. */
   follow: boolean
   voiceOn: boolean
+  /** Driving camera style: 3D chase, flat north-up, or whole-route view. */
+  driveView: DriveView
 
   // Safety layer
   safetyMode: boolean
@@ -58,6 +62,7 @@ interface AppState {
   setDriving: (on: boolean) => void
   setFollow: (on: boolean) => void
   setVoiceOn: (on: boolean) => void
+  setDriveView: (v: DriveView) => void
   setSafetyMode: (on: boolean) => void
   setFilterGroup: (g: FilterGroup) => void
   setNearby: (results: NearbyResult[], offline: boolean, savedAt: number | null) => void
@@ -79,6 +84,7 @@ export const useAppStore = create<AppState>((set) => ({
   driving: false,
   follow: true,
   voiceOn: true,
+  driveView: 'chase',
   safetyMode: true,
   filterGroup: 'all',
   nearby: [],
@@ -103,9 +109,10 @@ export const useAppStore = create<AppState>((set) => ({
       speedMps: speedMps !== undefined && speedMps !== null && !Number.isNaN(speedMps) ? speedMps : null,
     })),
   setLocationPermission: (locationPermission) => set({ locationPermission }),
-  setDriving: (driving) => set(driving ? { driving, follow: true } : { driving }),
+  setDriving: (driving) => set(driving ? { driving, follow: true, driveView: 'chase' } : { driving }),
   setFollow: (follow) => set({ follow }),
   setVoiceOn: (voiceOn) => set({ voiceOn }),
+  setDriveView: (driveView) => set({ driveView, follow: driveView !== 'overview' }),
   setSafetyMode: (safetyMode) => set({ safetyMode }),
   setFilterGroup: (filterGroup) => set({ filterGroup }),
   setNearby: (nearby, nearbyOffline, nearbySavedAt) =>
