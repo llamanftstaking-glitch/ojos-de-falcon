@@ -1,7 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { searchSafety, geocode, type GeocodeResult } from '@/lib/client-api'
+import {
+  searchSafety,
+  geocode,
+  fetchAutocomplete,
+  fetchPlace,
+  type GeocodeResult,
+  type PlaceSuggestion,
+} from '@/lib/client-api'
 import { useAppStore } from '@/store/app-store'
 import { CATEGORIES } from '@/lib/categories'
 import { flyTo } from './map-controller'
@@ -10,6 +17,9 @@ import { BRAND } from '@/brand'
 
 interface Suggestions {
   safety: SafetyLocation[]
+  /** Google Places type-ahead hits (preferred when the key is configured). */
+  predictions: PlaceSuggestion[]
+  /** Plain geocode fallback when autocomplete is unavailable. */
   places: GeocodeResult[]
 }
 
@@ -37,11 +47,19 @@ export default function SearchBar({ onPickDestination }: {
     debounce.current = setTimeout(async () => {
       setSearching(true)
       const center = userLocation ?? undefined
-      const [safety, places] = await Promise.all([
+      const [safety, predictions] = await Promise.all([
         searchSafety(q, center).catch(() => [] as SafetyLocation[]),
-        geocode(q, center).catch(() => [] as GeocodeResult[]),
+        fetchAutocomplete(q, center).catch(() => [] as PlaceSuggestion[]),
       ])
-      setSuggestions({ safety: safety.slice(0, 5), places: places.slice(0, 4) })
+      // No Places key (or no hits): fall back to plain geocoding so search
+      // never goes dark.
+      const places =
+        predictions.length === 0 ? await geocode(q, center).catch(() => [] as GeocodeResult[]) : []
+      setSuggestions({
+        safety: safety.slice(0, 4),
+        predictions: predictions.slice(0, 5),
+        places: places.slice(0, 4),
+      })
       setSearching(false)
     }, 300)
     return () => {
@@ -60,6 +78,13 @@ export default function SearchBar({ onPickDestination }: {
     setQuery('')
     setSuggestions(null)
     onPickDestination({ name: shortName(place.name), lngLat: place.lngLat })
+  }
+
+  async function pickPrediction(p: PlaceSuggestion) {
+    setQuery('')
+    setSuggestions(null)
+    const place = await fetchPlace(p.placeId)
+    if (place) onPickDestination({ name: place.name, lngLat: place.lngLat })
   }
 
   return (
@@ -89,11 +114,35 @@ export default function SearchBar({ onPickDestination }: {
 
       {suggestions && (
         <div className="absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-float">
-          {suggestions.safety.length === 0 && suggestions.places.length === 0 && !searching && (
-            <p className="px-4 py-4 text-base text-ink-muted">No results. Try a different name, address, or ZIP.</p>
+          {suggestions.safety.length === 0 &&
+            suggestions.predictions.length === 0 &&
+            suggestions.places.length === 0 &&
+            !searching && (
+              <p className="px-4 py-4 text-base text-ink-muted">No results. Try a different name, address, or ZIP.</p>
+            )}
+          {suggestions.predictions.length > 0 && (
+            <div>
+              <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-faint">Destinations</p>
+              {suggestions.predictions.map((p) => (
+                <button
+                  key={p.placeId}
+                  type="button"
+                  onClick={() => pickPrediction(p)}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-overlay"
+                >
+                  <span aria-hidden className="text-ink-faint">📍</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-base text-ink">{p.main}</span>
+                    {p.secondary && (
+                      <span className="block truncate text-sm text-ink-muted">{p.secondary}</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
           {suggestions.safety.length > 0 && (
-            <div>
+            <div className={suggestions.predictions.length > 0 ? 'border-t border-line' : undefined}>
               <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-faint">Safety locations</p>
               {suggestions.safety.map((loc) => (
                 <button

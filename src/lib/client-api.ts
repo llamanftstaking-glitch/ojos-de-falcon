@@ -180,3 +180,32 @@ export async function geocode(query: string, near?: LngLat): Promise<GeocodeResu
     return []
   }
 }
+
+/** Google Places type-ahead — addresses and business names as you type. */
+export interface PlaceSuggestion {
+  placeId: string
+  main: string
+  secondary: string
+}
+
+export async function fetchAutocomplete(query: string, near?: LngLat): Promise<PlaceSuggestion[]> {
+  const params = new URLSearchParams({ q: query })
+  if (near) params.set('at', `${near[0]},${near[1]}`)
+  try {
+    const data = await apiGet<{ results: PlaceSuggestion[] }>(`/api/v1/autocomplete?${params}`)
+    return data.results
+  } catch {
+    return []
+  }
+}
+
+export async function fetchPlace(placeId: string): Promise<{ name: string; address: string | null; lngLat: LngLat } | null> {
+  try {
+    const data = await apiGet<{ place: { name: string; address: string | null; lngLat: LngLat } }>(
+      `/api/v1/place?id=${encodeURIComponent(placeId)}`
+    )
+    return data.place
+  } catch {
+    return null
+  }
+}
